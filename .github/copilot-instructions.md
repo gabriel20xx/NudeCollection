@@ -80,6 +80,7 @@ All three apps import from `NudeShared/server/index.js` and mount `/shared` stat
 - Tag coverage endpoint: `GET /api/admin/media/tags/coverage?min=1&limit=2000&full=0` → `{ total, withMin, percent, distribution:[{ tagCount, items }], topUntaggedSample:[...], min, limit, full }` summarizing tagging completeness. `limit` defaults 2000 (max 10000). `full=1` disables limit (use sparingly).
 - Tag typo candidates endpoint: `GET /api/admin/media/tags/typo-candidates?distance=2&max=50&minUses=1` → `{ groups:[{ normalized, variants:[{ tag, uses }], size }] }` using Levenshtein distance (<=3 clamp). Helps surface near-duplicate tags for normalization.
 - Tag recency endpoint: `GET /api/admin/media/tags/recency?limit=50` → `{ tags:[{ tag, uses, firstUsed, lastUsed, spanDays, ageDays }] }` ordered by recent usage.
+- Public tag suggestions endpoint (Flow): `GET /api/tags/suggestions?limit=50` (default 50, max 200) → `{ tags:[{ tag, uses }], cached? }`. Read-only for user-facing discovery; 60s in-process cache; unauthenticated access permitted. Client (Flow `tags.js` + home overlay) now consumes this instead of admin-only endpoint.
 - Taxonomy report script: `node NudeShared/scripts/taxonomy-report.mjs --json` → consolidated JSON: `{ remainingCategories, topTags[], pairCardinality, coverage{...} }` (uses same 2000 media coverage sample).
 - Endpoint caching: suggestions & cooccurrence endpoints cached in-process for 60s unless `?nocache=1` specified. Response includes `cached:true` on cache hits.
 
