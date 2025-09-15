@@ -193,5 +193,35 @@ Key Principle Recap:
 - Never leave partial scaffolds (unused routes, dead CSS, unreferenced helpers); remove or finish them in the same change.
 - Always proceed automatically to the next logical required step (implementation, tests, docs, quality gates) without waiting for additional user prompts once a task scope is understood; only pause for clarification when a blocking ambiguity would risk an incorrect irreversible change.
 
+### 15.1 Proceed / Continue Shortcut
+If the user replies with only "Proceed" or "Continue" (case-insensitive) and there are no remaining active or in-progress todos for the current task scope, you MUST:
+1. Interpret this as explicit authorization to execute all previously suggested optional or follow-up improvements that were deferred (documentation touch-ups, minor accessibility tweaks, small test additions, low-risk refactors) within reasonable scope.
+2. Generate / refresh a todo list for those follow-ups and carry them out automatically (plan -> implement -> test -> summarize), unless a follow-up would be materially risky or ambiguous—skip those and note them.
+3. Clearly mark in the summary which follow-ups were executed versus skipped (with concise justification).
+4. Re-run relevant tests before finalizing.
+
+This shortcut reduces round-trips—never wait for another confirmation after such a trigger unless safety requires clarification.
+
+## 16. Post-Test Artifact Cleanup
+After running the unified test suite, ephemeral artifacts should be cleared to keep the repository state lean and avoid flakiness from leftover files.
+
+Cleanup Scope:
+- Directories: `database/` (leave file container but remove test-created db files except committed templates), `input/`, `output/`, `copy/` – remove all contents.
+- Transient fallback / temp dirs: any `NudeShared/tmp-fallback-*` directories are removed entirely.
+
+Script:
+`node NudeShared/scripts/clean-test-artifacts.mjs` outputs a JSON summary: `{ ok, cleaned:[{ dir, removed|skipped }], fallbackRemoved }`.
+
+Usage Notes:
+- Safe to run multiple times (idempotent). Missing directories are recreated before cleaning.
+- Never commit large binary artifacts created by tests; ensure cleanup precedes committing.
+- If adding new ephemeral directories in future features, extend the script & this section simultaneously.
+
+Policy:
+- CI must invoke the cleanup script after tests (post step) to guarantee a clean workspace for subsequent jobs.
+- Local developers should run it before switching branches to prevent incidental merges of large artifacts.
+
+Future Enhancement TODO: Consider adding an optional `--dry-run` flag and a `CLEAN_EXTRA="dir1,dir2"` env expansion.
+
 ---
 Questions or ambiguity: leave TODO comment near change + add a focused test; prioritize observable behavior over speculative abstractions.
