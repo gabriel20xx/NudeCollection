@@ -170,6 +170,9 @@ Immediate media copy on selection (distinct from explicit upload button flow):
 // trigger an immediate POST that uploads/copies the file server-side into /copy
 // (different from deferring until an Upload/Confirm button is pressed).
 // Pattern: fire-and-forget fetch with FormData or key list; server handles copy pipe.
+// Endpoint (Forge): POST /api/upload-copy multipart/form-data field name 'image'
+// Success: 200 { success:true, filename } (UUID-prefixed) stored under configured copy dir.
+// Failure (no file): 400 { success:false, error }
 ```
 
 Key Principle Recap:
@@ -180,6 +183,7 @@ Key Principle Recap:
 - Classification now tag-based (multi). Use bulk tag actions; avoid reintroducing single-category assumptions in new code.
 	- Plan for future removal of `category` column after external dependency audit (additive migration path documented; create follow-up migration instead of altering existing one).
  - One-test-per-file discipline: add new test file for every new endpoint or discrete behavior change to keep failures surgically informative.
+ - Unified logout behavior: The shared auth modal now always `window.location.replace('/')` after a successful logout (or detected stale session). Each app's root path handles its own canonical redirect (Admin `/` -> `/dashboard`, Forge `/` -> `/generator`). Do not implement per-app logout redirects; rely on root redirection for consistency.
  - Profile hardening: Shared `profile.ejs` script must guard JSON parsing (handle HTML/error responses) and null DOM elements when unauthenticated across all apps (Admin, Flow, Forge). Tests assert anonymous payload for unauthenticated `/api/profile` access.
  - After every newly implemented feature, bug fix, or code improvement: create a commit and push (small, frequent commits). Do not batch unrelated changes; keep diffs reviewable.
  - Post-test cleanup: optional `NudeShared/test/globalPostCleanup.mjs` script removes stray mkdtemp temp directories (e.g., `nudeadmin-out-*`, `tmp-shared-test-*`). Run after the unified test suite if temp dirs accumulate.
