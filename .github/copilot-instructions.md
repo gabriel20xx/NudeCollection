@@ -31,6 +31,7 @@ All three apps import from `NudeShared/server/index.js` and mount `/shared` stat
 - Sorting persistence: Use `localStorage` keys prefixed with `adminMedia` or `adminUsers` (existing: `adminMediaSort`). Keep naming stable.
 - Bulk actions: POST single endpoint with `{ action, ids, ...extra }` rather than multiple per-item requests.
 - Overlay + live region UX: Use the shared `NudeShared/client/overlay.js` utility (`NCOverlay.createOverlayController`) instead of per-page ad-hoc implementations; tests should assert presence of required aria-live regions for new admin pages.
+	- Sept 2025: NudeFlow registers an explicit fallback route `GET /shared/overlay.js` (serves `NudeShared/client/overlay.js` with `application/javascript`) before mounting the generic shared static candidates. Reason: production instance emitted a 404 + `text/html` for the overlay script, preventing the tags overlay from initializing. A focused test `flowSharedOverlayScriptServed.test.mjs` enforces: 200 status, JavaScript MIME, and presence of the `createOverlayController` symbol. If future critical shared scripts exhibit similar brittleness under the candidate mounting chain, replicate this pattern (explicit route + serving test) to harden first-paint dependencies.
 
 ### 3.1 Testing & Planning Policy (Augmented)
 - Every discrete workflow or feature (even small) MUST have at least one focused test (`NudeShared/test/**`).
@@ -84,6 +85,13 @@ All three apps import from `NudeShared/server/index.js` and mount `/shared` stat
 - Taxonomy report script: `node NudeShared/scripts/taxonomy-report.mjs --json` → consolidated JSON: `{ remainingCategories, topTags[], pairCardinality, coverage{...} }` (uses same 2000 media coverage sample).
 - Endpoint caching: suggestions & cooccurrence endpoints cached in-process for 60s unless `?nocache=1` specified. Response includes `cached:true` on cache hits.
 
+#### 5.1.1 Tags Overlay UX Hardening (Sept 2025)
+- Consolidated Flow home tags overlay logic: `home-tags-overlay.js` exclusively manages opening + loading using the shared `NCOverlay` controller. Duplicate inline overlay implementations inside `loading.js` were removed to prevent race conditions.
+- Overlay now remains open for browsing (previous auto-hide after `runWithOverlay` completion caused flicker). Implementation uses `controller.showSoon()` followed by manual fetch + DOM population; hide only occurs via explicit close button.
+- Tests (`flowTagsOverlayOpens.test.mjs`) poll up to 1.5s for `overlay.hidden === false` and `.active` class to accommodate show delay + network.
+- When Flow media directory is empty during tests, synthetic media elements are injected (test-side) to deterministically exercise navigation (`flowSecondMediaVisible.test.mjs`). This avoids flakiness from random media endpoints in an empty library while leaving runtime behavior unchanged in production.
+
+
 ### 5.2 User-Facing Tag Contributions & Voting (NudeFlow)
 - Schema additions (additive, idempotent):
 	- `media_tags.contributor_user_id` (nullable legacy attribution for who first added the tag on a media item).
@@ -113,6 +121,8 @@ When modifying any of the above, keep response shapes append-only and update thi
 
 ## 7. Frontend Template Patterns
 - Light JS IIFEs inside `.ejs` manage state; no build step.
+ - Floating media controls (likes, playlists, tags, mute, timer, fullscreen) are instantiated ONLY on feed pages (presence of `#home-container`). They now persist across fullscreen enter/exit events; tests assert `.floating-controls` remains in DOM after simulated `fullscreenchange`.
+	- Fullscreen persistence: global `fullscreenchange` (with vendor-prefixed fallbacks) listeners re-sync icon state and forcibly keep `.floating-controls` visible after entering or exiting fullscreen. Pattern lives in `loading.js` and should be reused if future fullscreen-targeted containers are introduced.
 - Escape dynamic strings with `escapeHtml` helper; never interpolate unescaped user input.
 - Reuse utility classes (`.toolbar`, `.grid-auto-200`, `.full-width`, `.btn-ghost`, `.badge`). Avoid inline styles except for transient dynamic widths (prefer adding a utility if reused twice).
 - Responsive adjustments live in `theme.css`. If you add new breakpoints for a component, co-locate them near existing responsive blocks (search for `@media (max-width:`).
@@ -230,3 +240,32 @@ Future Enhancement TODO: Consider adding an optional `--dry-run` flag and a `CLE
 
 ---
 Questions or ambiguity: leave TODO comment near change + add a focused test; prioritize observable behavior over speculative abstractions.
+
+## 17. Lean Change & Duplication Avoidance Policy (Less Is More)
+To keep the monorepo sustainable and reviewable, every change should favor the smallest, clearest delta that achieves the behavior goal while maximizing reuse.
+
+Core Principles:
+- Less Code, More Leverage: Before writing new logic, SEARCH for an existing helper, route, utility class, or pattern (e.g., overlay controller, toast, tag helpers, media service). Extend or adapt instead of re-implementing.
+- Single Source of Truth: If similar logic appears in multiple places, consolidate it into `NudeShared` (server or client) or an existing module. Never fork near-identical copies across apps.
+- Prefer Extension Over Parallelism: Add fields/branches to existing endpoints, migrations, or UI components rather than creating parallel endpoints/components that drift.
+- Avoid Feature Interference: When fixing or adding a feature, inspect for legacy or duplicate code paths that may conflict (example: removed duplicate tags overlay logic in `loading.js` in favor of `home-tags-overlay.js`). Eliminate or unify overlapping implementations during the same change.
+- Minimal Surface Area: Do not introduce new environment variables, routes, or utilities unless clearly necessary. If added, document them immediately in this file + targeted README and add a focused test.
+- Test What You Touch: Each behavioral change gets a focused test proving the reused pathway still works (no silent regressions when consolidating code).
+- Refactor Opportunistically (Scoped): When you must touch an area, you may do a small, low-risk consolidation (e.g., extracting a repeated block) but avoid broad refactors unrelated to the task.
+- No Dead Stubs: Don’t leave unused helpers or placeholders. Either finish the abstraction or remove it before concluding the task.
+- Explicit Over Implicit: If you must diverge from an existing pattern temporarily, add an inline TODO with rationale + planned consolidation path.
+
+Checklist Before Adding New Code:
+1. Did I search for an existing utility / function that already solves 70%+ of this? (If yes, extend; if no, justify.)
+2. Can this be an option/flag/parameter on an existing module instead of a new module/file?
+3. Am I removing or deactivating any now-obsolete duplicate after introducing the improved shared logic?
+4. Did I run tests (or add new ones) that would fail if the duplication reappears or the consolidation regresses?
+5. Is documentation (this file + any affected README) updated in the same change?
+
+Red Flags (Investigate Before Proceeding):
+- “Copied X and tweaked” in commit message or code comments.
+- Multiple near-identical SQL blocks differing only by one column—prefer parameterization or unified aggregation.
+- Re-implementing overlay / toast / logging / tag normalization logic locally.
+- Adding a new endpoint that returns a superset of an existing one without deprecating or extending the original.
+
+Outcome Goal: Over time the codebase trends toward higher cohesion and lower duplication; each new feature increases shared leverage rather than surface area.
