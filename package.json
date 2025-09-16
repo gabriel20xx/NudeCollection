@@ -10,10 +10,12 @@
   ],
   "scripts": {
     "postinstall": "echo Monorepo install complete",
-    "lint": "npm run lint -w NudeShared && npm run lint -w NudeFlow && npm run lint -w NudeForge && npm run lint -w NudeAdmin",
+    "lint": "npm run lint:all -w NudeShared",
+    "lint:json": "npm run lint:all:json -w NudeShared",
     "lint:fix": "npm run lint:fix -w NudeShared && npm run lint:fix -w NudeFlow && npm run lint:fix -w NudeForge && npm run lint:fix -w NudeAdmin",
     "test": "npm run test -w NudeShared",
     "test:watch": "npm run test:watch -w NudeShared",
+    "test:session": "npm run test:session -w NudeShared",
     "clean:test-artifacts": "node NudeShared/scripts/clean-test-artifacts.mjs"
   }
 }

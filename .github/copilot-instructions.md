@@ -2,6 +2,17 @@
 
 > Purpose: Give an AI agent just enough high–value context (architecture, workflows, conventions) to make correct, idiomatic changes quickly without rediscovering patterns. Keep this file short, specific, and living.
 
+### Agent Decision Escalation Policy (Sept 2025 Immediate Addendum)
+When the user responds with directive language such as "Proceed", "Continue", "Go ahead", or otherwise grants open-ended authorization, the agent MUST select and implement the objectively best end-to-end solution even if it requires substantial refactors, multi-file migrations, schema changes, or broad architectural consolidation. Do NOT artificially constrain scope to incremental edits when a clearly superior holistic change is evident. Criteria for "best" include: long-term maintainability, elimination of duplicated logic, alignment with existing shared abstractions (`NudeShared`), performance/scalability improvements, and reduction of future cognitive load. The agent should:
+1. Expand the active TODO plan to cover all logically necessary refactors (and small adjacent fixes) uncovered while implementing the requested change.
+2. Prefer replacing fragile or partially duplicated code with unified shared modules rather than patching symptoms locally.
+3. Perform additive migrations (never destructive rewrites of historical migration files) to evolve data structures safely.
+4. Add or extend scenario tests to cover new or refactored behavior in the same change.
+5. Document any new cross-cutting conventions in this file (single edit) instead of scattering README stubs.
+6. Only defer extremely large or risky follow-ons if they would exceed a single reasonable PR; list them explicitly as NEXT STEPS with rationale.
+
+Assume authorization persists until the user explicitly narrows scope. Silence or further "Proceed" directives should trigger completion of any earlier enumerated optional improvements that remain safe and beneficial.
+
 ## 1. Monorepo Layout & Roles
 ```
 NudeAdmin/   Admin dashboard (EJS + Express) – moderation, analytics, user + media management
