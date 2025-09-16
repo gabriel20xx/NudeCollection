@@ -1,0 +1,19 @@
+{
+  "name": "nude-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "NudeShared",
+    "NudeFlow",
+    "NudeForge",
+    "NudeAdmin"
+  ],
+  "scripts": {
+    "postinstall": "echo Monorepo install complete",
+    "lint": "npm run lint -w NudeShared && npm run lint -w NudeFlow && npm run lint -w NudeForge && npm run lint -w NudeAdmin",
+    "lint:fix": "npm run lint:fix -w NudeShared && npm run lint:fix -w NudeFlow && npm run lint:fix -w NudeForge && npm run lint:fix -w NudeAdmin",
+    "test": "npm run test -w NudeShared",
+    "test:watch": "npm run test:watch -w NudeShared",
+    "clean:test-artifacts": "node NudeShared/scripts/clean-test-artifacts.mjs"
+  }
+}

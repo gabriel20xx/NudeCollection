@@ -1,0 +1,50 @@
+# Root monorepo .gitignore
+# NOTE: Individual package .gitignore files still apply; this root file enforces cross-cutting exclusions.
+
+# Disallow accidental root-level node_modules (policy: only inside NudeAdmin, NudeFlow, NudeForge, NudeShared)
+/node_modules/
+
+# Generic OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment files (keep examples committed separately if needed)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build artifacts
+coverage/
+.nyc_output/
+dist/
+build/
+.cache/
+
+# DB / temp
+*.sqlite
+*.db
+database/*.db
+# Ephemeral audit usage snapshot databases (retain main dbfile.db if committed)
+NudeShared/database/audit_usage_*.db
+NudeShared/database/audit_usage_*.sqlite
+tmp/
+.temp/
+
+# Archives / packages
+*.tgz
+*.zip
+*.tar*
+
+# Lockfiles (policy: manage per-package; ignore at root if accidentally generated)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
