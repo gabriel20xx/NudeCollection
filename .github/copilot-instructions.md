@@ -236,6 +236,18 @@ Residual Artifact Reporting (Post-Suite):
 
 When modifying any of the above, keep response shapes append-only and update this file + a focused test under `NudeShared/test/admin/`.
 
+### Oct 2025 Addendum: Standard App Factory Enhancements
+`createStandardApp` now accepts two additional options to unify cache policy introspection and remove ad-hoc overlay script routes:
+`cachePolicies` – object describing static/cache tiers; when provided the factory forwards this to `applySharedBase` which registers `/__cache-policy` with `{ service, etag, policies, note }` JSON.
+`cachePolicyNote` – optional short string included in the endpoint output to guide future adjustments.
+All three services (Admin, Flow, Forge) now pass a consistent policy shape; tests rely on keys `shared.cssJs`, `shared.images`, and service‑specific sections (e.g., `generated` for Forge). Extend existing keys rather than renaming to preserve backward compatibility.
+
+Overlay Script Serving: `applySharedBase` registers a guaranteed explicit route for `/shared/overlay.js` when `sharedDir` is supplied and `client/overlay.js` exists. Individual apps must not implement their own overlay fallback route anymore (the legacy explicit route in NudeFlow was removed). If a future critical shared client script needs similar hardening, follow this pattern inside `applySharedBase` or a shared helper—not per app.
+
+Refactor Cleanup: Duplicate body parser + session + auth mounting logic inside NudeFlow was eliminated in favor of the factory. Only Flow‑specific CORS, helmet, and its public static directory remain as extra middleware. Any new cross‑service baseline concerns should be added directly to the factory (or `applySharedBase`) rather than re‑implemented locally.
+
+Test Expectations Updated: Scenario & smoke tests asserting `/__cache-policy` and `/shared/overlay.js` now depend exclusively on the factory + shared base. If these tests fail, verify the service supplies `cachePolicies` and that `sharedDir` points at the NudeShared root containing `client/overlay.js`.
+
 ## 6. Tests – Patterns to Follow
 - Use `ensureTestDb()` + `startEphemeral(app)` utilities.
 - Derive a unique media key using timestamp + Math.random to avoid unique constraint collisions.
@@ -430,3 +442,36 @@ Future Improvements (Optional):
 - Consider adding a `--parallel` flag to `lint-all.mjs` if runtime becomes a bottleneck; sequential output remains clearer for now.
 - Potential `report.json` mode aggregating ESLint JSON from each package for CI analytics.
 - Extend timing script to attribute time to setup vs test execution per file for finer-grained regression detection.
+
+### 17.1 Holistic Codebase Analysis Mandate (Sept 2025 Addendum)
+To further reduce duplication and ensure each change strengthens shared abstractions, every non‑trivial code modification MUST begin with a brief holistic repository analysis phase before writing code.
+
+Required Pre‑Change Steps (Agent MUST perform & implicitly document in reasoning / commit messages):
+1. Inventory Existing Abstractions: Search the monorepo (all four packages + `NudeShared`) for functions, modules, utilities, migrations, client scripts, CSS utilities, and endpoint patterns related to the intended change keywords (e.g., "session", "overlay", "tag vote", "thumbnail", etc.).
+2. Reuse / Extend Decision: Determine if an existing shared helper, endpoint, route, style utility, or test scaffold already fulfills ≥70% of the need. Prefer extension or parameterization over new files.
+3. Duplication Guard: If creating something new, explicitly (internally) confirm that no near‑duplicate file or function exists (case‑insensitive + fuzzy name match). Only proceed when confident the addition is unique & justified.
+4. Minimal Surface Planning: Define (internally) the smallest additive delta (single endpoint extension, added field, option flag, or CSS utility) instead of parallel constructs.
+5. Test Coverage Check: Identify the closest existing scenario / smoke test suitable for new assertions; plan to extend it instead of adding a brand new file unless clarity would suffer.
+
+Implementation Rules:
+- Do NOT author new code until the above scan is complete; treat skipping the scan as a policy violation.
+- Prefer amending Section 17 policies rather than scattering new guidance elsewhere when future refinements arise.
+- When an existing abstraction is deliberately NOT reused (edge case, incompatible contract), add a concise inline `// TODO(unify): reason` comment plus a follow‑up suggestion—then list that as a NEXT STEP if not handled immediately.
+- If analysis reveals an opportunity to delete dead or superseded code safely within the scope of the current task, perform that removal in the same change (with tests adjusted) unless it materially balloons the PR.
+
+Success Criteria for Each Change:
+- Zero introduction of parallel/duplicate helpers for already-solved concerns.
+- Added logic lives in or extends `NudeShared` when cross‑service value is evident.
+- Scenario tests updated rather than proliferated (per 3.1 policy).
+- Commit / PR description (or internal reasoning log) references the analysis outcomes (e.g., "Reused existing debounce helper; no new utility created").
+
+Rationale:
+- Enforces deliberate reuse discipline, preventing incremental drift after consolidation efforts.
+- Lowers long‑term maintenance & cognitive load by biasing toward evolutionary extension of shared primitives.
+- Creates an auditable reasoning trail for why new code was necessary when it appears.
+
+Exception Handling:
+- Truly urgent hotfixes (critical production breakage) may apply a temporary minimal patch; however the analysis phase must still run retroactively in the immediate follow‑up commit that cleans / consolidates the hotfix path.
+- Pure documentation spelling / grammar fixes are exempt.
+
+The agent should treat this analysis mandate as a hard gate: no multi‑file or behavioral change proceeds without it. This codifies existing intent from Sections 15 & 17 into an explicit, auditable workflow step.
