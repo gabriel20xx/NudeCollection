@@ -246,6 +246,14 @@ Overlay Script Serving: `applySharedBase` registers a guaranteed explicit route 
 
 Refactor Cleanup: Duplicate body parser + session + auth mounting logic inside NudeFlow was eliminated in favor of the factory. Only Flow‑specific CORS, helmet, and its public static directory remain as extra middleware. Any new cross‑service baseline concerns should be added directly to the factory (or `applySharedBase`) rather than re‑implemented locally.
 
+### Oct 2025 Addendum (Consolidation: HTTPS, Dirs, Layout Helper)
+New shared server helpers introduced to eliminate duplicated logic across Admin, Flow, and Forge:
+- `server/http/createHttpOrHttpsServer.js` – builds HTTP or self-signed HTTPS server (replaces per-app selfsigned logic). Prefer this whenever adding TLS support; pass `{ enableHttps, keyPath, certPath, serviceName }`.
+- `server/fs/ensureDirs.js` – idempotently creates required directories (`ensureDirs([INPUT_DIR, OUTPUT_DIR, ...])`). Avoid repeating inline `fs.existsSync + mkdir` blocks.
+- `server/app/layoutEjsHelper.js` – attaches an optional EJS layout helper enabling `<% layout('partials/layout') %>` pattern (previously bespoke in Admin). Use `attachLayoutHelper(app)` only where multi-template layout wrappers are needed.
+Tests: `NudeShared/test/smoke/sharedHelpers.test.mjs` covers these helpers. Extend that file rather than creating new micro tests for simple path variants.
+Policy: Future HTTPS or directory initialization changes MUST update these shared helpers instead of reintroducing per-app variants. If an app requires bespoke certificate rotation, extend the helper with an option (append-only) rather than copying logic.
+
 Test Expectations Updated: Scenario & smoke tests asserting `/__cache-policy` and `/shared/overlay.js` now depend exclusively on the factory + shared base. If these tests fail, verify the service supplies `cachePolicies` and that `sharedDir` points at the NudeShared root containing `client/overlay.js`.
 
 ## 6. Tests – Patterns to Follow
